@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>TaskBoard</title></head>
+  <body>
+    <h1>งานของฉัน</h1>
+    <ul>
+      {% for t in tasks %}
+        <li>
+          <strong>{{ t.title }}</strong>
+          {% if t.done %}(เสร็จแล้ว){% endif %}
+          <div>{{ t.detail }}</div>
+          <small>ครบกำหนด: {{ t.due_date|default:"-" }}</small>
+        </li>
+      {% empty %}
+        <li>ยังไม่มีงาน</li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>
