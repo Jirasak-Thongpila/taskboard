@@ -1,19 +1,416 @@
-<!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>TaskBoard</title></head>
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TaskBoard - จัดการงานของคุณ</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <style type="text/css">
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .main-container {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+        overflow: hidden;
+      }
+      .header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 2rem 0;
+        text-align: center;
+      }
+      .task-item {
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+      }
+      .task-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+      .task-item.completed {
+        background: #f8f9fa;
+        opacity: 0.8;
+      }
+      .task-item.completed .task-title {
+        text-decoration: line-through;
+        color: #6c757d;
+      }
+      .due-date {
+        font-size: 0.85rem;
+      }
+      .due-soon {
+        color: #fd7e14;
+        font-weight: 500;
+      }
+      .overdue {
+        color: #dc3545;
+        font-weight: 600;
+      }
+      .btn-action {
+        border: none;
+        padding: 0.25rem 0.5rem;
+        border-radius: 5px;
+        margin: 0 2px;
+        transition: all 0.3s ease;
+      }
+      .progress-container {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+      }
+      .filter-tabs {
+        margin-bottom: 2rem;
+      }
+      .filter-tabs .nav-link {
+        border-radius: 25px;
+        margin: 0 0.25rem;
+        color: #495057;
+      }
+      .filter-tabs .nav-link.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: transparent;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+      }
+      .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+      }
+    </style>
+  </head>
   <body>
-    <h1>งานของฉัน</h1>
-    <ul>
-      {% for t in tasks %}
-        <li>
-          <strong>{{ t.title }}</strong>
-          {% if t.done %}(เสร็จแล้ว){% endif %}
-          <div>{{ t.detail }}</div>
-          <small>ครบกำหนด: {{ t.due_date|default:"-" }}</small>
-        </li>
-      {% empty %}
-        <li>ยังไม่มีงาน</li>
+    <div class="container">
+      <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+          <h1><i class="bi bi-check-circle-fill me-2"></i>TaskBoard</h1>
+          <p class="mb-0">จัดการงานและเพิ่มประสิทธิภาพในการทำงาน</p>
+        </div>
+
+        <div class="p-4">
+          <!-- Progress Bar -->
+          {% if tasks %}
+          <div class="progress-container">
+            <h5><i class="bi bi-graph-up me-2"></i>ความคืบหน้า</h5>
+            <div class="progress mb-2" style="height: 20px">
+              <div
+                class="progress-bar bg-success"
+                style="width: auto;"
+              ></div>
+            </div>
+            <small class="text-muted">
+              เสร็จแล้ว {{ completed_count }} จาก {{ total_count }} งาน ({{
+              progress_percentage }}%)
+            </small>
+          </div>
+          {% endif %}
+
+          <!-- Filter Tabs -->
+          <ul class="nav nav-pills filter-tabs justify-content-center">
+            <li class="nav-item">
+              <a class="nav-link active" href="?filter=all" data-filter="all">
+                <i class="bi bi-list-ul me-1"></i>ทั้งหมด
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="?filter=pending" data-filter="pending">
+                <i class="bi bi-clock me-1"></i>รอดำเนินการ
+              </a>
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                href="?filter=completed"
+                data-filter="completed"
+              >
+                <i class="bi bi-check-circle me-1"></i>เสร็จแล้ว
+              </a>
+            </li>
+          </ul>
+
+          <!-- Add Task Form -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h5 class="mb-0">
+                <i class="bi bi-plus-circle me-2"></i>เพิ่มงานใหม่
+              </h5>
+            </div>
+            <div class="card-body">
+              <form method="post" action="{% url 'add_task' %}">
+                {% csrf_token %}
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <input
+                      type="text"
+                      class="form-control"
+                      name="title"
+                      placeholder="ชื่องาน"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <input type="date" class="form-control" name="due_date" />
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                      <i class="bi bi-plus-lg me-1"></i>เพิ่มงาน
+                    </button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12">
+                    <textarea
+                      class="form-control"
+                      name="detail"
+                      placeholder="รายละเอียด (ไม่บังคับ)"
+                      rows="2"
+                    ></textarea>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Tasks List -->
+          {% if tasks %}
+          <div class="row">
+            {% for t in tasks %}
+            <div class="col-12 mb-3">
+              <div class="task-item {% if t.done %}completed{% endif %} p-3">
+                <div class="row align-items-center">
+                  <div class="col-md-6">
+                    <h6 class="task-title mb-1">
+                      {% if t.done %}
+                      <i class="bi bi-check-circle-fill text-success me-2"></i>
+                      {% else %}
+                      <i class="bi bi-circle text-muted me-2"></i>
+                      {% endif %} {{ t.title }}
+                    </h6>
+                    {% if t.detail %}
+                    <p class="text-muted small mb-1">{{ t.detail }}</p>
+                    {% endif %}
+                    <small class="due-date">
+                      <i class="bi bi-calendar3 me-1"></i>
+                      {% if t.due_date %}
+                        ครบกำหนด: {{ t.due_date|date:"d M Y" }}
+                        {% now "Y-m-d" as today %}
+                        {% if t.due_date|date:"Y-m-d" < today %}
+                          <span class="badge bg-danger ms-1">เกินกำหนดแล้ว</span>
+                        {% elif t.due_date|date:"Y-m-d" == today %}
+                          <span class="badge bg-warning ms-1">วันนี้</span>
+                        {% endif %}
+                      {% else %}
+                        ไม่กำหนดเวลา
+                      {% endif %}
+                    </small>
+                  </div>
+                  <div class="col-md-6 text-end">
+                    {% if not t.done %}
+                    <form
+                      method="post"
+                      action="{% url 'mark_done' t.id %}"
+                      class="d-inline"
+                    >
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-success btn-sm me-2">
+                        <i class="bi bi-check"></i> เสร็จแล้ว
+                      </button>
+                    </form>
+                    {% else %}
+                    <form
+                      method="post"
+                      action="{% url 'mark_undone' t.id %}"
+                      class="d-inline"
+                    >
+                      {% csrf_token %}
+                      <button
+                        type="submit"
+                        class="btn btn-outline-secondary btn-sm me-2"
+                      >
+                        <i class="bi bi-arrow-clockwise"></i> เลิกทำ
+                      </button>
+                    </form>
+                    {% endif %}
+                    <button
+                      class="btn btn-outline-primary btn-sm me-2"
+                      data-bs-toggle="modal"
+                      data-bs-target="#editModal{{ t.id }}"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <form
+                      method="post"
+                      action="{% url 'delete_task' t.id %}"
+                      class="d-inline"
+                      onsubmit="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบงานนี้?')"
+                    >
+                      {% csrf_token %}
+                      <button
+                        type="submit"
+                        class="btn btn-outline-danger btn-sm"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Edit Modal for each task -->
+            <div class="modal fade" id="editModal{{ t.id }}" tabindex="-1">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">แก้ไขงาน</h5>
+                    <button
+                      type="button"
+                      class="btn-close"
+                      data-bs-dismiss="modal"
+                    ></button>
+                  </div>
+                  <form method="post" action="{% url 'edit_task' t.id %}">
+                    <div class="modal-body">
+                      {% csrf_token %}
+                      <div class="mb-3">
+                        <label class="form-label">ชื่องาน</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          name="title"
+                          value="{{ t.title }}"
+                          required
+                        />
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">รายละเอียด</label>
+                        <textarea class="form-control" name="detail" rows="3">
+{{ t.detail }}</textarea
+                        >
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">วันครบกำหนด</label>
+                        <input
+                          type="date"
+                          class="form-control"
+                          name="due_date"
+                          value="{% if t.due_date %}{{ t.due_date|date:'Y-m-d' }}{% endif %}"
+                        />
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                      >
+                        ยกเลิก
+                      </button>
+                      <button type="submit" class="btn btn-primary">
+                        บันทึกการเปลี่ยนแปลง
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <i class="bi bi-clipboard-x"></i>
+            <h4>ยังไม่มีงาน</h4>
+            <p class="text-muted">เริ่มต้นด้วยการเพิ่มงานใหม่ด้านบน</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+      {% for message in messages %}
+      <div
+        class="alert alert-{{ message.tags }} alert-dismissible fade show"
+        role="alert"
+      >
+        <i class="bi bi-check-circle-fill me-2"></i>{{ message }}
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+        ></button>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Auto dismiss alerts after 3 seconds
+      document.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          const alerts = document.querySelectorAll(".alert");
+          alerts.forEach(function (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          });
+        }, 3000);
+      });
+
+      // Filter functionality
+      document.addEventListener("DOMContentLoaded", function () {
+        const filterLinks = document.querySelectorAll("[data-filter]");
+        const taskItems = document.querySelectorAll(".task-item");
+
+        filterLinks.forEach(function (link) {
+          link.addEventListener("click", function (e) {
+            e.preventDefault();
+
+            // Update active tab
+            filterLinks.forEach((l) => l.classList.remove("active"));
+            this.classList.add("active");
+
+            const filter = this.getAttribute("data-filter");
+
+            taskItems.forEach(function (item) {
+              const isCompleted = item.classList.contains("completed");
+
+              if (filter === "all") {
+                item.style.display = "block";
+              } else if (filter === "completed" && isCompleted) {
+                item.style.display = "block";
+              } else if (filter === "pending" && !isCompleted) {
+                item.style.display = "block";
+              } else {
+                item.style.display = "none";
+              }
+            });
+          });
+        });
+      });
+    </script>
   </body>
 </html>
